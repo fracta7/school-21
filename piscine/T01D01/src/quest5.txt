@@ -1,0 +1,2 @@
+nano src/door_management_files/door_configuration/door_1.conf
+changed status from CLOSED to OPEN

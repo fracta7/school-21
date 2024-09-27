@@ -1,0 +1,7 @@
+This is a simple test file.
+With some text lines.
+
+Text after 3 line breaks.
+
+
+Text after 4 breaks.
