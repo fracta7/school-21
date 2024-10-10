@@ -113,6 +113,62 @@ void s21_get_char(char **src, int *c, int length) {
   *src = q;
 }
 
+void s21_parse_integer_part(char **q, long double *num, int *length) {
+  while (**q >= '0' && **q <= '9' && *length > 0) {
+    *num *= 10.0L;
+    *num += (**q - '0');
+    (*q)++;
+    (*length)--;
+  }
+}
+
+void s21_parse_fraction_part(char **q, long double *num, int *length) {
+  if (**q == '.') {
+    long double fraction = 0.0L;
+    long double divider = 1.0L;
+    (*q)++;
+    (*length)--;
+    while (**q >= '0' && **q <= '9' && *length > 0) {
+      fraction = fraction * 10.0L + (**q - '0');
+      divider *= 10.0L;
+      (*q)++;
+      (*length)--;
+    }
+    *num += fraction / divider;
+  }
+}
+
+void s21_parse_exponent_part(char **q, long double *num, int *length) {
+  if (**q == 'e' || **q == 'E') {
+    (*q)++;
+    (*length)--;
+    int exp_sign = 1;
+    if (**q == '-') {
+      exp_sign = -1;
+      (*q)++;
+      (*length)--;
+    } else if (**q == '+') {
+      (*q)++;
+      (*length)--;
+    }
+
+    long exponent = 0;
+    while (**q >= '0' && **q <= '9' && *length > 0) {
+      exponent = exponent * 10 + (**q - '0');
+      (*q)++;
+      (*length)--;
+    }
+
+    for (long i = 0; i < exponent; i++) {
+      if (exp_sign == -1) {
+        *num /= 10.0L;
+      } else {
+        *num *= 10.0L;
+      }
+    }
+  }
+}
+
 void s21_get_float(char **src, long double *num, int length) {
   char *q = *src;
   int minus = 0;
@@ -133,60 +189,13 @@ void s21_get_float(char **src, long double *num, int length) {
   if (length > 0) *num = 0;
 
   // Integer part
-  while (*q >= '0' && *q <= '9' && length > 0) {
-    *num *= 10.0L;  // Use long double
-    *num += (*q - '0');
-    q++;
-    length--;
-  }
+  s21_parse_integer_part(&q, num, &length);
 
   // Fractional part
-  if (*q == '.') {
-    long double fraction = 0.0L;
-    long double divider = 1.0L;
-    q++;
-    length--;
-    while (*q >= '0' && *q <= '9' && length > 0) {
-      fraction = fraction * 10.0L + (*q - '0');
-      divider *= 10.0L;
-      q++;
-      length--;
-    }
-    *num += fraction / divider;
-  }
+  s21_parse_fraction_part(&q, num, &length);
 
   // Exponent part
-  if (*q == 'e' || *q == 'E') {
-    q++;
-    length--;
-    int exp_sign = 1;
-    if (*q == '-') {
-      exp_sign = -1;
-      q++;
-      length--;
-    } else if (*q == '+') {
-      q++;
-      length--;
-    }
-
-    long exponent = 0;
-    while (*q >= '0' && *q <= '9' && length > 0) {
-      exponent = exponent * 10 + (*q - '0');
-      q++;
-      length--;
-    }
-
-    // Handle the exponent without using pow
-    if (exp_sign == -1) {
-      for (long i = 0; i < exponent; i++) {
-        *num /= 10.0L;
-      }
-    } else {
-      for (long i = 0; i < exponent; i++) {
-        *num *= 10.0L;
-      }
-    }
-  }
+  s21_parse_exponent_part(&q, num, &length);
 
   *src = q;
   if (minus) *num *= -1;
@@ -253,201 +262,231 @@ void s21_get_octa(char **src, unsigned long *num, int length) {
   *src = q;
 }
 
+void s21_handle_c(const char **str, va_list *args, int star_flag, long length,
+                  int *count) {
+  if (star_flag) {
+    int tmp;
+    s21_get_char((char **)str, &tmp, length);
+  } else {
+    s21_get_char((char **)str, va_arg(*args, int *), length);
+  }
+  (*count)++;
+}
+
+void s21_handle_s(const char **str, va_list *args, int star_flag, long length,
+                  int l, int *count) {
+  s21_skip_spaces((char **)str);
+  if (star_flag) {
+    char *tmp = malloc(sizeof(char));
+    s21_get_string((char **)str, tmp, length);
+    free(tmp);
+  } else if (l == 1) {
+    // Handle wide character strings here
+  } else {
+    s21_get_string((char **)str, va_arg(*args, char *), length);
+  }
+  (*count)++;
+}
+
+void s21_handle_i(const char **str, va_list *args, int star_flag, long length,
+                  int *count) {
+  s21_skip_spaces((char **)str);
+  if (star_flag) {
+    long tmp;
+    s21_custom_atoi((char **)str, &tmp, length);
+  } else {
+    s21_custom_atoi((char **)str, (long *)(va_arg(*args, int *)), length);
+  }
+  (*count)++;
+}
+
+void s21_handle_d_u(const char **str, va_list *args, int star_flag, long length,
+                    int *count) {
+  s21_skip_spaces((char **)str);
+  if (star_flag) {
+    long tmp;
+    *str = s21_get_int((char *)*str, &tmp, length);
+  } else {
+    *str = s21_get_int((char *)*str, (long *)(va_arg(*args, short *)), length);
+  }
+  (*count)++;
+}
+
+void s21_handle_f_e_g(const char **str, va_list *args, int star_flag,
+                      long length, int h, int l, int L, int *count) {
+  s21_skip_spaces((char **)str);
+  if (star_flag) {
+    long double tmp;
+    s21_get_float((char **)str, &tmp, length);
+  } else if (l == 1 || h == 1) {
+    double *t_l = va_arg(*args, double *);
+    long double tmp;
+    s21_get_float((char **)str, &tmp, length);
+    *t_l = (double)tmp;
+  } else if (L == 1) {
+    s21_get_float((char **)str, va_arg(*args, long double *), length);
+  } else {
+    float *t_l = va_arg(*args, float *);
+    long double tmp;
+    s21_get_float((char **)str, &tmp, length);
+    *t_l = (float)tmp;
+  }
+  (*count)++;
+}
+
+void s21_handle_o(const char **str, va_list *args, int star_flag, long length,
+                  int *count) {
+  s21_skip_spaces((char **)str);
+  if (star_flag) {
+    unsigned long tmp;
+    s21_get_octa((char **)str, &tmp, length);
+  } else {
+    s21_get_octa((char **)str, va_arg(*args, unsigned long *), length);
+  }
+  (*count)++;
+}
+
+void s21_handle_x(const char **str, va_list *args, int star_flag, int *count) {
+  s21_skip_spaces((char **)str);
+  unsigned long tmp = 0;
+
+  if (**str == '0' && (*(*str + 1) == 'x' || *(*str + 1) == 'X')) {
+    *str += 2;
+  }
+
+  while ((**str >= '0' && **str <= '9') || (**str >= 'a' && **str <= 'f') ||
+         (**str >= 'A' && **str <= 'F')) {
+    if (**str >= '0' && **str <= '9') {
+      tmp = (tmp << 4) | (**str - '0');
+    } else if (**str >= 'a' && **str <= 'f') {
+      tmp = (tmp << 4) | (**str - 'a' + 10);
+    } else if (**str >= 'A' && **str <= 'F') {
+      tmp = (tmp << 4) | (**str - 'A' + 10);
+    }
+    (*str)++;
+  }
+
+  if (!star_flag) {
+    *(unsigned long *)va_arg(*args, unsigned long *) = tmp;
+  }
+
+  (*count)++;
+}
+
+void s21_handle_p(const char **str, va_list *args, int star_flag, int *count) {
+  s21_skip_spaces((char **)str);
+  unsigned long tmp = 0;
+
+  if (**str == '0' && (*(*str + 1) == 'x' || *(*str + 1) == 'X')) {
+    *str += 2;
+  }
+
+  while ((**str >= '0' && **str <= '9') || (**str >= 'a' && **str <= 'f') ||
+         (**str >= 'A' && **str <= 'F')) {
+    if (**str >= '0' && **str <= '9') {
+      tmp = (tmp << 4) | (**str - '0');
+    } else if (**str >= 'a' && **str <= 'f') {
+      tmp = (tmp << 4) | (**str - 'a' + 10);
+    } else if (**str >= 'A' && **str <= 'F') {
+      tmp = (tmp << 4) | (**str - 'A' + 10);
+    }
+    (*str)++;
+  }
+
+  if (!star_flag) {
+    *(void **)va_arg(*args, void **) = (void *)tmp;
+  }
+
+  (*count)++;
+}
+
+void s21_ss_handle_flags(const char **format, int *star_flag, long *length,
+                         int *h, int *l, int *L) {
+  // Reset flags
+  *star_flag = 0;
+  *h = 0;
+  *l = 0;
+  *L = 0;
+  *length = -1;
+
+  // Parse optional width (number)
+  if (**format >= '0' && **format <= '9') {
+    *format = s21_get_int((char *)*format, length, -1);
+  } else if (**format == '*') {  // Parse '*' (star flag)
+    *star_flag = 1;
+    (*format)++;
+  }
+
+  // Parse length modifiers (h, l, L)
+  if (**format == 'h') {
+    *h = 1;
+    (*format)++;
+  } else if (**format == 'l') {
+    *l = 1;
+    (*format)++;
+  } else if (**format == 'L') {
+    *L = 1;
+    (*format)++;
+  }
+}
+
+void s21_ss_handle_spec(const char **str, const char **format, va_list *args,
+                        int star_flag, long length, int h, int l, int L,
+                        int *count) {
+  switch (**format) {
+    case 'c':
+      s21_handle_c(str, args, star_flag, length, count);
+      break;
+    case 's':
+      s21_handle_s(str, args, star_flag, length, l, count);
+      break;
+    case 'i':
+      s21_handle_i(str, args, star_flag, length, count);
+      break;
+    case 'u':
+    case 'd':
+      s21_handle_d_u(str, args, star_flag, length, count);
+      break;
+    case 'f':
+    case 'e':
+    case 'E':
+    case 'g':
+    case 'G':
+      s21_handle_f_e_g(str, args, star_flag, length, h, l, L, count);
+      break;
+    case 'o':
+      s21_handle_o(str, args, star_flag, length, count);
+      break;
+    case 'x':
+    case 'X':
+      s21_handle_x(str, args, star_flag, count);
+      break;
+    case 'p':
+      s21_handle_p(str, args, star_flag, count);
+      break;
+    case 'n': {
+      int *num = va_arg(*args, int *);
+      *num = s21_strlen(*str) - length;
+      *num *= -1;
+      (*count)++;
+      break;
+    }
+  }
+}
+
 int s21_sscanf(const char *str, const char *format, ...) {
   va_list args;
   va_start(args, format);
-
-  s21_size_t n_buffer = s21_strlen(str);
-
-  int *num;
   int count = 0;
   long length;
   while (*format) {
     length = -1;
-
     if (*format == '%') {
-      int star_flag = 0;
-      int h = 0;
-      int l = 0;
-      int L = 0;
+      int star_flag = 0, h = 0, l = 0, L = 0;
       format++;
-
-      if (*format >= '0' && *format <= '9') {
-        format = s21_get_int((char *)format, &length, -1);  //
-      } else if (*format == '*') {
-        star_flag = 1;
-        format++;
-      }
-
-      if (*format == 'h') {
-        h = 1;
-        format++;
-      } else if (*format == 'l') {
-        l = 1;
-        format++;
-      } else if (*format == 'L') {
-        L = 1;
-        format++;
-      }
-
-      switch (*format) {
-        case 'c': {
-          if (star_flag) {
-            int tmp;
-            s21_get_char((char **)&str, &tmp, length);
-          } else {
-            s21_get_char((char **)&str, va_arg(args, int *), length);
-          }
-          count++;
-          break;
-        }
-        case 's': {
-          s21_skip_spaces((char **)&str);
-          if (star_flag) {
-            char *tmp = malloc(sizeof(char));
-            s21_get_string((char **)&str, tmp, length);
-            free(tmp);
-          } else if (l == 1) {
-          } else {
-            s21_get_string((char **)&str, va_arg(args, char *), length);
-          }
-          count++;
-          break;
-        }
-        case 'i': {
-          s21_skip_spaces((char **)&str);
-          if (star_flag) {
-            long tmp;
-            s21_custom_atoi((char **)&str, &tmp, length);
-          } else {
-            s21_custom_atoi((char **)&str, (long *)(va_arg(args, int *)),
-                            length);
-          }
-          count++;
-          break;
-        }
-        case 'u':
-        case 'd': {
-          s21_skip_spaces((char **)&str);
-          if (star_flag) {
-            long tmp;
-            str = s21_get_int((char *)str, &tmp, length);
-          } else {
-            str = s21_get_int((char *)str, (long *)(va_arg(args, short *)),
-                              length);
-          }
-          count++;
-          break;
-        }
-        case 'E':
-        case 'e':
-        case 'g':
-        case 'G':
-        case 'f': {
-          s21_skip_spaces((char **)&str);
-          if (star_flag) {
-            long double tmp;
-            s21_get_float((char **)&str, &tmp, length);
-          } else if (l == 1 || h == 1) {
-            double *t_l = va_arg(args, double *);
-            long double tmp;
-            s21_get_float((char **)&str, &tmp, length);
-            *t_l = (double)tmp;
-          } else if (L == 1) {
-            s21_get_float((char **)&str, va_arg(args, long double *), length);
-          } else {
-            float *t_l = va_arg(args, float *);
-            long double tmp;
-            s21_get_float((char **)&str, &tmp, length);
-            *t_l = (float)tmp;
-          }
-
-          count++;
-          break;
-        }
-        case 'o': {
-          s21_skip_spaces((char **)&str);
-          if (star_flag) {
-            unsigned long tmp;
-            s21_get_octa((char **)&str, &tmp, length);
-          } else {
-            s21_get_octa((char **)&str, va_arg(args, unsigned long *), length);
-          }
-          count++;
-          break;
-        }
-        case 'x':
-        case 'X': {
-          s21_skip_spaces((char **)&str);
-          unsigned long tmp = 0;
-
-          // Check for "0x" prefix
-          if (*str == '0' && (*(str + 1) == 'x' || *(str + 1) == 'X')) {
-            str += 2;  // Move past "0x"
-          }
-
-          // Read hexadecimal digits
-          while ((*str >= '0' && *str <= '9') || (*str >= 'a' && *str <= 'f') ||
-                 (*str >= 'A' && *str <= 'F')) {
-            if (*str >= '0' && *str <= '9') {
-              tmp = (tmp << 4) | (*str - '0');
-            } else if (*str >= 'a' && *str <= 'f') {
-              tmp = (tmp << 4) | (*str - 'a' + 10);
-            } else if (*str >= 'A' && *str <= 'F') {
-              tmp = (tmp << 4) | (*str - 'A' + 10);
-            }
-            str++;
-          }
-
-          // Store the result in the argument
-          if (!star_flag) {
-            *(unsigned long *)va_arg(args, unsigned long *) =
-                tmp;  // Assuming we want to store it as unsigned long
-          }
-
-          count++;
-          break;
-        }
-        case 'n': {
-          if (!star_flag) {
-            num = va_arg(args, int *);
-            *num = s21_strlen(str) - n_buffer;
-            *num *= -1;
-            count++;
-          }
-          break;
-        }
-        case 'p': {
-          s21_skip_spaces((char **)&str);
-          unsigned long tmp = 0;
-
-          // Check for "0x" prefix
-          if (*str == '0' && (*(str + 1) == 'x' || *(str + 1) == 'X')) {
-            str += 2;  // Move past "0x"
-          }
-
-          // Read hexadecimal digits
-          while ((*str >= '0' && *str <= '9') || (*str >= 'a' && *str <= 'f') ||
-                 (*str >= 'A' && *str <= 'F')) {
-            if (*str >= '0' && *str <= '9') {
-              tmp = (tmp << 4) | (*str - '0');
-            } else if (*str >= 'a' && *str <= 'f') {
-              tmp = (tmp << 4) | (*str - 'a' + 10);
-            } else if (*str >= 'A' && *str <= 'F') {
-              tmp = (tmp << 4) | (*str - 'A' + 10);
-            }
-            str++;
-          }
-
-          // Store the pointer
-          if (!star_flag) {
-            *(void **)va_arg(args, void **) =
-                (void *)tmp;  // Cast to void pointer
-          }
-          count++;
-          break;
-        }
-      }
+      s21_ss_handle_flags(&format, &star_flag, &length, &h, &l, &L);
+      s21_ss_handle_spec(&str, &format, &args, star_flag, length, h, l, L,
+                         &count);
     }
     format++;
   }

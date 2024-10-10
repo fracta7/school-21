@@ -1,5 +1,5 @@
-#ifndef S21_STRING_H
-#define S21_STRING_H
+#ifndef S21_STRING_H_
+#define S21_STRING_H_
 
 #include <float.h>
 #include <inttypes.h>
@@ -110,6 +110,9 @@ void s21_g_format(FORMAT s_format, va_list input, char *str);
 void s21_percent_format(FORMAT s_format, char *buf);
 
 // Custom sscanf:
+void s21_parse_integer_part(char **q, long double *num, int *length);
+void s21_parse_fraction_part(char **q, long double *num, int *length);
+void s21_parse_exponent_part(char **q, long double *num, int *length);
 void s21_custom_atoi(char **src, long *num, int length);
 char *s21_get_int(char *src, long *num, int length);
 void s21_get_float(char **src, long double *num, int length);
@@ -121,4 +124,4 @@ void s21_skip_spaces(char **str);
 void s21_get_string(char **src, char *dest, int length);
 int s21_get_character_index(const char *src, const char c);
 
-#endif
+#endif  // S21_STRING_H_

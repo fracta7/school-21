@@ -9,10 +9,11 @@
  */
 int s21_contains_char(const char c, const char *str, s21_size_t len) {
   int result = 0;
-  for (s21_size_t i = 0; i < len; i++)
+  for (s21_size_t i = 0; i < len; i++) {
     if (str[i] == c) {
       result = 1;
       break;
     }
+  }
   return result;
 }

@@ -1,5 +1,5 @@
-#ifndef TEST_CASES_H
-#define TEST_CASES_H
+#ifndef TEST_CASES_H_
+#define TEST_CASES_H_
 
 #include <check.h>
 #include <stdio.h>
@@ -29,4 +29,4 @@ TCase *test_strerror(void);
 TCase *test_sprintf(void);
 TCase *test_sscanf(void);
 
-#endif
+#endif  // TEST_CASES_H_

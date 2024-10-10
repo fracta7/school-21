@@ -82,7 +82,6 @@ gcov_report: print clean test
 	@rm -rf *.o tests/*.o
 	@rm -rf *.gcno *.gcda *.gcov tests/*.gcda tests/*.gcno
 	@echo -e "$(GREEN)[Opening up a browser with report...]$(RESET)"
-	@xdg-open coverage/index.html > /dev/null 2>&1
 
 # Clean target to remove generated files
 clean: clean_junk

@@ -15,8 +15,7 @@ int s21_memcmp(const void *str1, const void *str2, s21_size_t n) {
     if (diff != 0) {
       result = s21_normalize(diff);
       break;
-    } else
-      continue;
+    }
   }
   return result;
 }

@@ -923,6 +923,29 @@ START_TEST(test_sprintf_hash_flag) {
 }
 END_TEST
 
+START_TEST(test_sprintf_errors) {
+  FORMAT s_format = {0};
+  int width = 1;  // star
+  s21_check_star(&s_format, &width, NULL, '*');
+  ck_assert_int_eq(s_format.error, 1);
+  width = '*';  // Simulating it being a non-zero value
+  s21_check_star(&s_format, &width, NULL, '0');
+  ck_assert_int_eq(s_format.error, 1);
+
+  int result;
+  int status;
+
+  status = s21_char_to_int(NULL, &result);
+  ck_assert_int_eq(status, -1);  // Expect NULL
+
+  status = s21_char_to_int("12345678901234567890", &result);
+  ck_assert_int_eq(status, -2);  // Expect overflow
+  int res;
+  int a = s21_char_to_int("-12", &res);
+  ck_assert_int_eq(a, 0);
+}
+END_TEST
+
 TCase *test_sprintf(void) {
   TCase *tc = tcase_create("sprintf");
 
@@ -987,6 +1010,7 @@ TCase *test_sprintf(void) {
   tcase_add_test(tc, test_sprintf_l_hex);
   tcase_add_test(tc, test_sprintf_minus);
   tcase_add_test(tc, test_sprintf_null);
+  tcase_add_test(tc, test_sprintf_errors);
 
   return tc;
 }

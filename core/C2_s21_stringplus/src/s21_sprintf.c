@@ -89,11 +89,10 @@ void s21_f_to_str(long double num, FORMAT s_format, char *buf) {
     num *= -1;
   }
   if (num == s21_INF) {
-    if (is_negative) {
+    if (is_negative)
       is_negative = 4;
-    } else {
+    else
       is_negative = 3;
-    }
     buf = s21_strncat(buf, "inf", 3);
   } else if (num != num) {
     is_negative = 2;
@@ -102,11 +101,10 @@ void s21_f_to_str(long double num, FORMAT s_format, char *buf) {
   } else {
     int i = 0;
     int accuracy = 0;
-    if (s_format.point && s_format.precision >= 0) {
+    if (s_format.point && s_format.precision >= 0)
       accuracy = s_format.precision;
-    } else {
+    else
       accuracy = 6;
-    }
     if (num < 0) {
       is_negative = 1;
       num *= -1;
@@ -118,8 +116,7 @@ void s21_f_to_str(long double num, FORMAT s_format, char *buf) {
     dec = modfl(num, &pos_int);
     s21_int_to_char(s_format, rintl(pos_int), buf, &i);
     s21_reverse_string(buf, i);
-    for (; buf[i]; i++)
-      ;
+    while (buf[i]) i++;
     if (s_format.sharp || accuracy > 0) buf[i++] = '.';
     for (int in = 0; in < accuracy; in++) dec *= 10;
     i = 0;
@@ -224,7 +221,6 @@ void s21_g_to_str(long double num, FORMAT s_format, char *buf) {
 
 void s21_x_to_str(unsigned long long int num, FORMAT s_format, char *buf) {
   int is_uppercase = (s_format.spec == 'X');
-
   // Handle the case where num is 0
   if (num == 0) {
     if (s_format.point && s_format.precision == 0) {
@@ -238,7 +234,6 @@ void s21_x_to_str(unsigned long long int num, FORMAT s_format, char *buf) {
     char upper_hex_digits[] = "0123456789ABCDEF";
     char temp_buf[64] = {0};
     int index = 0;
-
     // Convert the number to hexadecimal
     while (num != 0) {
       int digit = num % 16;
@@ -246,21 +241,17 @@ void s21_x_to_str(unsigned long long int num, FORMAT s_format, char *buf) {
       temp_buf[index++] =
           is_uppercase ? upper_hex_digits[digit] : hex_digits[digit];
     }
-
     // Handle the precision
     while (index < s_format.precision) temp_buf[index++] = '0';
-
     if (s_format.sharp) {
       const char *prefix = (is_uppercase) ? "0X" : "0x";
       s21_strncat(buf, prefix, 2);
     }
-
     // reverse the buffer
     int buf_len = s21_strlen(buf);
     for (int i = 0; i < index; i++) buf[buf_len + i] = temp_buf[index - i - 1];
     buf[buf_len + index] = '\0';
   }
-
   s21_make_flags(0, s_format, buf);
   s21_make_width(s_format, buf, 0);
 }
@@ -348,9 +339,7 @@ void s21_make_flags(int is_negative, FORMAT s_format, char *buf) {
   }
   if (s_format.minus) {
     i = s21_strlen(buf);
-    while (i < s_format.width) {
-      buf[i++] = ' ';
-    }
+    while (i < s_format.width) buf[i++] = ' ';
   }
 }
 
@@ -368,33 +357,24 @@ void s21_make_width(FORMAT s_format, char *buf, int is_negative) {
     int edge = 0;
     buf[s_format.width + 1] = '\0';
     if (!s21_strchr("scuo\%", s_format.spec) && is_negative < 2) {
-      if (flag && s_format.zero) {
-        if (is_negative == 1 || s_format.plus || s_format.space) {
-          edge++;
-        }
-      }
+      if (flag && s_format.zero)
+        if (is_negative == 1 || s_format.plus || s_format.space) edge++;
     }
-    while (len >= edge) {
-      buf[s_format.width--] = buf[len--];
-    }
+    while (len >= edge) buf[s_format.width--] = buf[len--];
     for (; edge <= s_format.width; edge++) {
       if (s21_strchr("diuoxp", s_format.spec)) {
-        if (s_format.zero && !s_format.point) {
+        if (s_format.zero && !s_format.point)
           buf[edge] = '0';
-        } else {
+        else
           buf[edge] = ' ';
-        }
       }
       if (s21_strchr("fcs", s_format.spec) && is_negative < 3) {
-        if (s_format.zero) {
+        if (s_format.zero)
           buf[edge] = '0';
-        } else {
+        else
           buf[edge] = ' ';
-        }
       }
-      if (is_negative > 1) {
-        buf[edge] = ' ';
-      }
+      if (is_negative > 1) buf[edge] = ' ';
     }
   }
 }
@@ -428,14 +408,12 @@ void s21_s_format(const FORMAT *s_format, va_list arg_list, char *buf) {
     buf = s21_strncat(buf, "(null)", 6);
   }
   int accuracy = 0;
-  if (s_format->point) {
+  if (s_format->point)
     accuracy = s_format->precision;
-  } else {
+  else
     accuracy = s21_strlen(buf);
-  }
   int i = 0;
-  for (; i < accuracy; i++)
-    ;
+  while (i < accuracy) i++;
   while (buf[i] != '\0') {
     buf[i] = '\0';
     i++;
